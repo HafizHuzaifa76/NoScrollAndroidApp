@@ -1,3 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">No Scroll App</string>
+    <string name="app_name">No Scroll</string>
+    <string name="accessibility_service_label">No Scroll</string>
+    <string name="accessibility_service_description">No Scroll watches for Reels, Shorts, TikTok, and similar endless video feeds, then closes them immediately so you can stay focused. It only uses Accessibility to detect those screens and press Back — it does not read your messages or personal content.</string>
 </resources>

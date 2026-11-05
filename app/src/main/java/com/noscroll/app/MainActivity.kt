@@ -7,41 +7,67 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
+import com.noscroll.app.data.PreferencesManager
+import com.noscroll.app.model.MonitoredApps
+import com.noscroll.app.ui.AppToggleState
+import com.noscroll.app.ui.HomeScreen
+import com.noscroll.app.ui.HomeUiState
 import com.noscroll.app.ui.theme.NoScrollAppTheme
+import com.noscroll.app.util.AccessibilityUtils
 
 class MainActivity : ComponentActivity() {
+
+    private lateinit var preferences: PreferencesManager
+    private var uiState by mutableStateOf(HomeUiState())
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        preferences = PreferencesManager.getInstance(this)
         enableEdgeToEdge()
         setContent {
             NoScrollAppTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
+                    HomeScreen(
+                        state = uiState,
+                        onOpenAccessibilitySettings = {
+                            AccessibilityUtils.openAccessibilitySettings(this)
+                        },
+                        onProtectionToggled = { enabled ->
+                            preferences.isProtectionEnabled = enabled
+                            refreshUiState()
+                        },
+                        onAppToggled = { appId, enabled ->
+                            preferences.setAppEnabled(appId, enabled)
+                            refreshUiState()
+                        },
+                        onRefresh = { refreshUiState() },
+                        modifier = Modifier.padding(innerPadding),
                     )
                 }
             }
         }
     }
-}
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+    override fun onResume() {
+        super.onResume()
+        refreshUiState()
+    }
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    NoScrollAppTheme {
-        Greeting("Android")
+    private fun refreshUiState() {
+        uiState = HomeUiState(
+            accessibilityEnabled = AccessibilityUtils.isServiceEnabled(this),
+            protectionEnabled = preferences.isProtectionEnabled,
+            blockCount = preferences.blockCount,
+            apps = MonitoredApps.all.map { app ->
+                AppToggleState(
+                    app = app,
+                    enabled = preferences.isAppEnabled(app.id),
+                )
+            },
+        )
     }
 }
