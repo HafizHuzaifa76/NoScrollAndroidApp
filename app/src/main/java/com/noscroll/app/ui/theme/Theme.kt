@@ -26,12 +26,13 @@ private val LightColorScheme = lightColorScheme(
 
 private val DarkColorScheme = darkColorScheme(
     primary = EmeraldBright,
-    onPrimary = Ink,
-    primaryContainer = EmeraldDeep,
+    onPrimary = Color(0xFF003732),
+    primaryContainer = Color(0xFF115E59),
     onPrimaryContainer = Mist,
     secondary = Mist,
-    onSecondary = Ink,
-    tertiary = Amber,
+    onSecondary = Color(0xFF003732),
+    tertiary = Color(0xFFFBBF24),
+    onTertiary = Color(0xFF422006),
     background = Color(0xFF0B1211),
     onBackground = Color(0xFFF3F5F4),
     surface = Color(0xFF15201E),

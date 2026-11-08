@@ -46,11 +46,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.noscroll.app.ui.screens.ReelsBlockerScreen
 import com.noscroll.app.ui.screens.SocialAppsBlockerScreen
-import com.noscroll.app.ui.theme.Canvas
 import com.noscroll.app.ui.theme.Emerald
 import com.noscroll.app.ui.theme.EmeraldDeep
-import com.noscroll.app.ui.theme.Ink
-import com.noscroll.app.ui.theme.Slate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,10 +61,11 @@ fun NoScrollApp(
     onRefresh: () -> Unit,
 ) {
     var destination by rememberSaveable { mutableStateOf(NoScrollDestination.REELS) }
+    val colors = MaterialTheme.colorScheme
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Canvas,
+        containerColor = colors.background,
         topBar = {
             NoScrollTopBar(
                 destination = destination,
@@ -124,10 +122,12 @@ private fun NoScrollTopBar(
     destination: NoScrollDestination,
     accessibilityEnabled: Boolean,
 ) {
+    val colors = MaterialTheme.colorScheme
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Canvas),
+            .background(colors.background),
     ) {
         Box(
             modifier = Modifier
@@ -141,8 +141,8 @@ private fun NoScrollTopBar(
         )
         TopAppBar(
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Canvas,
-                titleContentColor = Ink,
+                containerColor = colors.background,
+                titleContentColor = colors.onBackground,
             ),
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -169,32 +169,39 @@ private fun NoScrollTopBar(
                         Text(
                             text = destination.title,
                             style = MaterialTheme.typography.titleLarge,
-                            color = Ink,
+                            color = colors.onBackground,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             text = destination.subtitle,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Slate,
+                            color = colors.onSurfaceVariant,
                         )
                     }
                 }
             },
             actions = {
+                val chipBg = if (accessibilityEnabled) {
+                    colors.primary.copy(alpha = 0.16f)
+                } else {
+                    colors.tertiary.copy(alpha = 0.18f)
+                }
+                val chipFg = if (accessibilityEnabled) {
+                    colors.primary
+                } else {
+                    colors.tertiary
+                }
                 Box(
                     modifier = Modifier
                         .padding(end = 16.dp)
                         .clip(RoundedCornerShape(999.dp))
-                        .background(
-                            if (accessibilityEnabled) Emerald.copy(alpha = 0.12f)
-                            else Color(0xFFFEF3C7)
-                        )
+                        .background(chipBg)
                         .padding(horizontal = 10.dp, vertical = 6.dp),
                 ) {
                     Text(
                         text = if (accessibilityEnabled) "Protected" else "Setup",
                         style = MaterialTheme.typography.labelMedium,
-                        color = if (accessibilityEnabled) EmeraldDeep else Color(0xFFB45309),
+                        color = chipFg,
                         fontWeight = FontWeight.SemiBold,
                     )
                 }
@@ -208,8 +215,10 @@ private fun NoScrollBottomBar(
     destination: NoScrollDestination,
     onDestinationSelected: (NoScrollDestination) -> Unit,
 ) {
+    val colors = MaterialTheme.colorScheme
+
     NavigationBar(
-        containerColor = MaterialTheme.colorScheme.surface,
+        containerColor = colors.surface,
         tonalElevation = 0.dp,
     ) {
         NavigationBarItem(
@@ -220,11 +229,11 @@ private fun NoScrollBottomBar(
             },
             label = { Text(NoScrollDestination.REELS.label) },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = Emerald,
-                selectedTextColor = EmeraldDeep,
-                indicatorColor = Emerald.copy(alpha = 0.14f),
-                unselectedIconColor = Slate,
-                unselectedTextColor = Slate,
+                selectedIconColor = colors.primary,
+                selectedTextColor = colors.primary,
+                indicatorColor = colors.primary.copy(alpha = 0.16f),
+                unselectedIconColor = colors.onSurfaceVariant,
+                unselectedTextColor = colors.onSurfaceVariant,
             ),
         )
         NavigationBarItem(
@@ -235,11 +244,11 @@ private fun NoScrollBottomBar(
             },
             label = { Text(NoScrollDestination.SOCIAL.label) },
             colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = Emerald,
-                selectedTextColor = EmeraldDeep,
-                indicatorColor = Emerald.copy(alpha = 0.14f),
-                unselectedIconColor = Slate,
-                unselectedTextColor = Slate,
+                selectedIconColor = colors.primary,
+                selectedTextColor = colors.primary,
+                indicatorColor = colors.primary.copy(alpha = 0.16f),
+                unselectedIconColor = colors.onSurfaceVariant,
+                unselectedTextColor = colors.onSurfaceVariant,
             ),
         )
     }

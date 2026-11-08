@@ -1,6 +1,7 @@
 package com.noscroll.app.ui.components
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -40,15 +41,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.noscroll.app.ui.theme.Amber
 import com.noscroll.app.ui.theme.Emerald
-import com.noscroll.app.ui.theme.EmeraldBright
 import com.noscroll.app.ui.theme.EmeraldDeep
-import com.noscroll.app.ui.theme.Ink
-import com.noscroll.app.ui.theme.Slate
 
 @Composable
 fun HeroStatusCard(
@@ -65,11 +63,12 @@ fun HeroStatusCard(
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = MaterialTheme.colorScheme
     val statusColor by animateColorAsState(
         targetValue = when {
-            !accessibilityEnabled -> Amber
-            protectionEnabled -> EmeraldBright
-            else -> Slate
+            !accessibilityEnabled -> colors.tertiary
+            protectionEnabled -> Color(0xFF5EEAD4)
+            else -> colors.onSurfaceVariant
         },
         label = "heroStatus",
     )
@@ -187,10 +186,7 @@ fun HeroStatusCard(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            Color.White.copy(alpha = 0.35f),
-                        ),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)),
                     ) {
                         Icon(Icons.Rounded.Refresh, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -202,10 +198,7 @@ fun HeroStatusCard(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(14.dp),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            Color.White.copy(alpha = 0.35f),
-                        ),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)),
                     ) {
                         Icon(Icons.Rounded.Settings, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
@@ -226,12 +219,12 @@ fun MasterToggleCard(
     onToggled: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = MaterialTheme.colorScheme
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
+        colors = CardDefaults.cardColors(containerColor = colors.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
@@ -239,7 +232,7 @@ fun MasterToggleCard(
                 .fillMaxWidth()
                 .border(
                     width = 1.dp,
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.45f),
+                    color = colors.outline.copy(alpha = 0.45f),
                     shape = RoundedCornerShape(20.dp),
                 )
                 .padding(horizontal = 18.dp, vertical = 16.dp),
@@ -249,13 +242,13 @@ fun MasterToggleCard(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(Emerald.copy(alpha = 0.12f)),
+                    .background(colors.primary.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Shield,
                     contentDescription = null,
-                    tint = Emerald,
+                    tint = colors.primary,
                 )
             }
             Spacer(modifier = Modifier.width(14.dp))
@@ -263,13 +256,13 @@ fun MasterToggleCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    color = Ink,
+                    color = colors.onSurface,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate,
+                    color = colors.onSurfaceVariant,
                 )
             }
             Switch(
@@ -277,8 +270,10 @@ fun MasterToggleCard(
                 onCheckedChange = onToggled,
                 enabled = interactionEnabled,
                 colors = SwitchDefaults.colors(
-                    checkedTrackColor = Emerald,
-                    checkedThumbColor = Color.White,
+                    checkedTrackColor = colors.primary,
+                    checkedThumbColor = colors.onPrimary,
+                    uncheckedTrackColor = colors.surfaceVariant,
+                    uncheckedThumbColor = colors.onSurfaceVariant,
                 ),
             )
         }
@@ -295,12 +290,13 @@ fun AppToggleCard(
     onToggled: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val colors = MaterialTheme.colorScheme
+    val letterColor = if (accent.luminance() > 0.65f) Color(0xFF111827) else accent
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
+        colors = CardDefaults.cardColors(containerColor = colors.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
@@ -308,7 +304,7 @@ fun AppToggleCard(
                 .fillMaxWidth()
                 .border(
                     width = 1.dp,
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                    color = colors.outline.copy(alpha = 0.4f),
                     shape = RoundedCornerShape(18.dp),
                 )
                 .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -318,13 +314,13 @@ fun AppToggleCard(
                 modifier = Modifier
                     .size(42.dp)
                     .clip(RoundedCornerShape(13.dp))
-                    .background(accent.copy(alpha = 0.14f)),
+                    .background(accent.copy(alpha = 0.18f)),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = title.take(1).uppercase(),
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (accent == Color(0xFFFFFC00)) Ink else accent,
+                    color = letterColor,
                     fontWeight = FontWeight.Bold,
                 )
             }
@@ -333,13 +329,13 @@ fun AppToggleCard(
                 Text(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
-                    color = Ink,
+                    color = colors.onSurface,
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Slate,
+                    color = colors.onSurfaceVariant,
                 )
             }
             Switch(
@@ -347,8 +343,10 @@ fun AppToggleCard(
                 onCheckedChange = onToggled,
                 enabled = enabled,
                 colors = SwitchDefaults.colors(
-                    checkedTrackColor = Emerald,
-                    checkedThumbColor = Color.White,
+                    checkedTrackColor = colors.primary,
+                    checkedThumbColor = colors.onPrimary,
+                    uncheckedTrackColor = colors.surfaceVariant,
+                    uncheckedThumbColor = colors.onSurfaceVariant,
                 ),
             )
         }
@@ -361,17 +359,19 @@ fun SectionHeader(
     subtitle: String,
     modifier: Modifier = Modifier,
 ) {
+    val colors = MaterialTheme.colorScheme
+
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            color = Ink,
+            color = colors.onBackground,
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = subtitle,
             style = MaterialTheme.typography.bodySmall,
-            color = Slate,
+            color = colors.onSurfaceVariant,
         )
     }
 }
