@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Apps
+import androidx.compose.material.icons.rounded.HourglassTop
 import androidx.compose.material.icons.rounded.MovieFilter
 import androidx.compose.material.icons.rounded.Shield
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,8 +43,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.noscroll.app.ui.screens.ControlledScrollScreen
 import com.noscroll.app.ui.screens.ReelsBlockerScreen
 import com.noscroll.app.ui.screens.SocialAppsBlockerScreen
 import com.noscroll.app.ui.theme.Emerald
@@ -56,8 +59,10 @@ fun NoScrollApp(
     onOpenAccessibilitySettings: () -> Unit,
     onReelsProtectionToggled: (Boolean) -> Unit,
     onSocialProtectionToggled: (Boolean) -> Unit,
+    onControlledScrollToggled: (Boolean) -> Unit,
     onReelAppToggled: (String, Boolean) -> Unit,
     onSocialAppToggled: (String, Boolean) -> Unit,
+    onControlledAppToggled: (String, Boolean) -> Unit,
     onRefresh: () -> Unit,
 ) {
     var destination by rememberSaveable { mutableStateOf(NoScrollDestination.REELS) }
@@ -109,6 +114,14 @@ fun NoScrollApp(
                     onOpenAccessibilitySettings = onOpenAccessibilitySettings,
                     onProtectionToggled = onSocialProtectionToggled,
                     onAppToggled = onSocialAppToggled,
+                    onRefresh = onRefresh,
+                )
+
+                NoScrollDestination.CONTROLLED -> ControlledScrollScreen(
+                    state = state,
+                    onOpenAccessibilitySettings = onOpenAccessibilitySettings,
+                    onProtectionToggled = onControlledScrollToggled,
+                    onAppToggled = onControlledAppToggled,
                     onRefresh = onRefresh,
                 )
             }
@@ -216,40 +229,37 @@ private fun NoScrollBottomBar(
     onDestinationSelected: (NoScrollDestination) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
+    val itemColors = NavigationBarItemDefaults.colors(
+        selectedIconColor = colors.primary,
+        selectedTextColor = colors.primary,
+        indicatorColor = colors.primary.copy(alpha = 0.16f),
+        unselectedIconColor = colors.onSurfaceVariant,
+        unselectedTextColor = colors.onSurfaceVariant,
+    )
+
+    data class NavItem(
+        val dest: NoScrollDestination,
+        val icon: ImageVector,
+    )
+
+    val items = listOf(
+        NavItem(NoScrollDestination.REELS, Icons.Rounded.MovieFilter),
+        NavItem(NoScrollDestination.SOCIAL, Icons.Rounded.Apps),
+        NavItem(NoScrollDestination.CONTROLLED, Icons.Rounded.HourglassTop),
+    )
 
     NavigationBar(
         containerColor = colors.surface,
         tonalElevation = 0.dp,
     ) {
-        NavigationBarItem(
-            selected = destination == NoScrollDestination.REELS,
-            onClick = { onDestinationSelected(NoScrollDestination.REELS) },
-            icon = {
-                Icon(Icons.Rounded.MovieFilter, contentDescription = NoScrollDestination.REELS.label)
-            },
-            label = { Text(NoScrollDestination.REELS.label) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = colors.primary,
-                selectedTextColor = colors.primary,
-                indicatorColor = colors.primary.copy(alpha = 0.16f),
-                unselectedIconColor = colors.onSurfaceVariant,
-                unselectedTextColor = colors.onSurfaceVariant,
-            ),
-        )
-        NavigationBarItem(
-            selected = destination == NoScrollDestination.SOCIAL,
-            onClick = { onDestinationSelected(NoScrollDestination.SOCIAL) },
-            icon = {
-                Icon(Icons.Rounded.Apps, contentDescription = NoScrollDestination.SOCIAL.label)
-            },
-            label = { Text(NoScrollDestination.SOCIAL.label) },
-            colors = NavigationBarItemDefaults.colors(
-                selectedIconColor = colors.primary,
-                selectedTextColor = colors.primary,
-                indicatorColor = colors.primary.copy(alpha = 0.16f),
-                unselectedIconColor = colors.onSurfaceVariant,
-                unselectedTextColor = colors.onSurfaceVariant,
-            ),
-        )
+        items.forEach { item ->
+            NavigationBarItem(
+                selected = destination == item.dest,
+                onClick = { onDestinationSelected(item.dest) },
+                icon = { Icon(item.icon, contentDescription = item.dest.label) },
+                label = { Text(item.dest.label) },
+                colors = itemColors,
+            )
+        }
     }
 }

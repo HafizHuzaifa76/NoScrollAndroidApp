@@ -24,6 +24,15 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ControlledScrollAlertActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTop"
+            android:showWhenLocked="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.NoScrollApp" />
+
         <service
             android:name=".NoScrollAccessibilityService"
             android:exported="false"
