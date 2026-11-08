@@ -8,8 +8,9 @@ import com.noscroll.app.detection.ReelDetector
 
 /**
  * Runs in the background once Accessibility permission is granted.
- * When a monitored reel / short / spotlight surface is detected, it
- * immediately presses Back to close it.
+ *
+ * 1. Social Apps Blocker — closes entire selected apps with Home
+ * 2. Reels Blocker — closes Reels / Shorts with Back
  */
 class NoScrollAccessibilityService : AccessibilityService() {
 
@@ -28,15 +29,10 @@ class NoScrollAccessibilityService : AccessibilityService() {
         if (!::preferences.isInitialized) {
             preferences = PreferencesManager.getInstance(this)
         }
-        if (!preferences.isProtectionEnabled) return
 
         val packageName = event.packageName?.toString() ?: return
         if (packageName == applicationContext.packageName) return
 
-        val enabledPackages = preferences.enabledPackageNames()
-        if (packageName !in enabledPackages) return
-
-        // Avoid reacting to every tiny content change for the same package.
         val now = System.currentTimeMillis()
         if (packageName == lastBlockedPackage && now - lastBlockAtMs < BLOCK_COOLDOWN_MS) {
             return
@@ -45,21 +41,43 @@ class NoScrollAccessibilityService : AccessibilityService() {
         val relevant = event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
             event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ||
             event.eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED
-
         if (!relevant) return
+
+        // Full-app social blocking takes priority over reel-only blocking.
+        val socialPackages = preferences.enabledSocialPackageNames()
+        if (packageName in socialPackages) {
+            if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED ||
+                event.eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+            ) {
+                closeSocialApp(packageName, now)
+            }
+            return
+        }
+
+        if (!preferences.isProtectionEnabled) return
+
+        val reelPackages = preferences.enabledReelPackageNames()
+        if (packageName !in reelPackages) return
 
         val root = rootInActiveWindow ?: return
         val matched = ReelDetector.isShortFormScreen(packageName, root)
         if (matched) {
             closeShortForm(packageName, now)
         } else if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
-            // Helps retune detectors when apps rename view IDs.
             val candidates = ReelDetector.debugCandidateIds(root)
             Log.d(
                 TAG,
                 "No match in $packageName class=${event.className} candidates=$candidates",
             )
         }
+    }
+
+    private fun closeSocialApp(packageName: String, now: Long) {
+        lastBlockAtMs = now
+        lastBlockedPackage = packageName
+        preferences.incrementSocialBlockCount()
+        val wentHome = performGlobalAction(GLOBAL_ACTION_HOME)
+        Log.i(TAG, "Blocked social app $packageName (home=$wentHome)")
     }
 
     private fun closeShortForm(packageName: String, now: Long) {
@@ -70,7 +88,6 @@ class NoScrollAccessibilityService : AccessibilityService() {
         val closed = performGlobalAction(GLOBAL_ACTION_BACK)
         Log.i(TAG, "Blocked short-form in $packageName (back=$closed)")
 
-        // If Back did nothing (e.g. already at root of TikTok), go Home.
         if (!closed) {
             performGlobalAction(GLOBAL_ACTION_HOME)
         }

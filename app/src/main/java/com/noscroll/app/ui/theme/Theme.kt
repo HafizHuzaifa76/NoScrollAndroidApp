@@ -8,27 +8,37 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val LightColorScheme = lightColorScheme(
-    primary = Forest,
+    primary = Emerald,
     onPrimary = Color.White,
-    secondary = ForestDark,
+    primaryContainer = Mist,
+    onPrimaryContainer = EmeraldDeep,
+    secondary = EmeraldDeep,
     onSecondary = Color.White,
-    tertiary = Mist,
-    background = Sand,
+    tertiary = Amber,
+    background = Canvas,
     onBackground = Ink,
-    surface = Color.White,
+    surface = SurfaceWhite,
     onSurface = Ink,
+    surfaceVariant = CanvasDeep,
+    onSurfaceVariant = InkSoft,
+    outline = Color(0xFFCBD5D1),
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Mist,
+    primary = EmeraldBright,
     onPrimary = Ink,
-    secondary = Sand,
+    primaryContainer = EmeraldDeep,
+    onPrimaryContainer = Mist,
+    secondary = Mist,
     onSecondary = Ink,
-    tertiary = Forest,
-    background = Color(0xFF121412),
-    onBackground = Sand,
-    surface = Color(0xFF1C1F1C),
-    onSurface = Sand,
+    tertiary = Amber,
+    background = Color(0xFF0B1211),
+    onBackground = Color(0xFFF3F5F4),
+    surface = Color(0xFF15201E),
+    onSurface = Color(0xFFF3F5F4),
+    surfaceVariant = Color(0xFF1E2B28),
+    onSurfaceVariant = Color(0xFFC5D0CC),
+    outline = Color(0xFF3A4A46),
 )
 
 @Composable

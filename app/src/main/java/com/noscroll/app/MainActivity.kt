@@ -4,25 +4,23 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import com.noscroll.app.data.PreferencesManager
 import com.noscroll.app.model.MonitoredApps
-import com.noscroll.app.ui.AppToggleState
-import com.noscroll.app.ui.HomeScreen
-import com.noscroll.app.ui.HomeUiState
+import com.noscroll.app.model.SocialApps
+import com.noscroll.app.ui.AppUiState
+import com.noscroll.app.ui.NoScrollApp
+import com.noscroll.app.ui.ReelAppToggleState
+import com.noscroll.app.ui.SocialAppToggleState
 import com.noscroll.app.ui.theme.NoScrollAppTheme
 import com.noscroll.app.util.AccessibilityUtils
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var preferences: PreferencesManager
-    private var uiState by mutableStateOf(HomeUiState())
+    private var uiState by mutableStateOf(AppUiState())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,24 +28,29 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             NoScrollAppTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    HomeScreen(
-                        state = uiState,
-                        onOpenAccessibilitySettings = {
-                            AccessibilityUtils.openAccessibilitySettings(this)
-                        },
-                        onProtectionToggled = { enabled ->
-                            preferences.isProtectionEnabled = enabled
-                            refreshUiState()
-                        },
-                        onAppToggled = { appId, enabled ->
-                            preferences.setAppEnabled(appId, enabled)
-                            refreshUiState()
-                        },
-                        onRefresh = { refreshUiState() },
-                        modifier = Modifier.padding(innerPadding),
-                    )
-                }
+                NoScrollApp(
+                    state = uiState,
+                    onOpenAccessibilitySettings = {
+                        AccessibilityUtils.openAccessibilitySettings(this)
+                    },
+                    onReelsProtectionToggled = { enabled ->
+                        preferences.isProtectionEnabled = enabled
+                        refreshUiState()
+                    },
+                    onSocialProtectionToggled = { enabled ->
+                        preferences.isSocialBlockEnabled = enabled
+                        refreshUiState()
+                    },
+                    onReelAppToggled = { appId, enabled ->
+                        preferences.setAppEnabled(appId, enabled)
+                        refreshUiState()
+                    },
+                    onSocialAppToggled = { appId, enabled ->
+                        preferences.setSocialAppEnabled(appId, enabled)
+                        refreshUiState()
+                    },
+                    onRefresh = { refreshUiState() },
+                )
             }
         }
     }
@@ -58,14 +61,22 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun refreshUiState() {
-        uiState = HomeUiState(
+        uiState = AppUiState(
             accessibilityEnabled = AccessibilityUtils.isServiceEnabled(this),
-            protectionEnabled = preferences.isProtectionEnabled,
-            blockCount = preferences.blockCount,
-            apps = MonitoredApps.all.map { app ->
-                AppToggleState(
+            reelsProtectionEnabled = preferences.isProtectionEnabled,
+            socialProtectionEnabled = preferences.isSocialBlockEnabled,
+            reelBlockCount = preferences.blockCount,
+            socialBlockCount = preferences.socialBlockCount,
+            reelApps = MonitoredApps.all.map { app ->
+                ReelAppToggleState(
                     app = app,
                     enabled = preferences.isAppEnabled(app.id),
+                )
+            },
+            socialApps = SocialApps.all.map { app ->
+                SocialAppToggleState(
+                    app = app,
+                    enabled = preferences.isSocialAppEnabled(app.id),
                 )
             },
         )
