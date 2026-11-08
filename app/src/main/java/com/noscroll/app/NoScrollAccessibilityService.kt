@@ -48,9 +48,17 @@ class NoScrollAccessibilityService : AccessibilityService() {
 
         if (!relevant) return
 
-        val root = rootInActiveWindow
-        if (ReelDetector.isShortFormScreen(packageName, root)) {
+        val root = rootInActiveWindow ?: return
+        val matched = ReelDetector.isShortFormScreen(packageName, root)
+        if (matched) {
             closeShortForm(packageName, now)
+        } else if (event.eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            // Helps retune detectors when apps rename view IDs.
+            val candidates = ReelDetector.debugCandidateIds(root)
+            Log.d(
+                TAG,
+                "No match in $packageName class=${event.className} candidates=$candidates",
+            )
         }
     }
 

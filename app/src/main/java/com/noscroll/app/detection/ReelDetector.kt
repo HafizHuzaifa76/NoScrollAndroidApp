@@ -1,83 +1,125 @@
 package com.noscroll.app.detection
 
+import android.graphics.Rect
 import android.view.accessibility.AccessibilityNodeInfo
 import com.noscroll.app.model.MonitoredApps
 
 /**
- * Heuristics for detecting short-form video screens (Reels, Shorts, etc.).
+ * Detects immersive short-form players (Reels / Shorts), not Stories or feed shelves.
  *
- * Social apps change their UI often, so detection combines package-specific
- * signals with shared keywords found in class names, view IDs, and content.
- * Keywords are intentionally specific to avoid matching home-feed tab labels.
+ * Important Instagram quirk: Stories still use legacy "reel_viewer_*" resource IDs.
+ * Actual Reels use "clips_*" IDs. Matching "reel_viewer" therefore blocks Stories and
+ * misses Reels — that was the previous bug.
  */
 object ReelDetector {
 
-    private val packageMatchers: Map<String, PackageMatcher> = mapOf(
-        "com.instagram.android" to PackageMatcher(
-            // Full-screen Reels / Clips viewer — not the home "Reels" tab label.
-            idOrClassContains = listOf(
-                "clips_viewer",
-                "clipsviewer",
-                "reels_viewer",
-                "reelsviewer",
-                "reel_viewer",
+    private val packageRules: Map<String, DetectionRules> = mapOf(
+        "com.instagram.android" to DetectionRules(
+            // Full-screen Reels / Clips player only.
+            exactViewIds = listOf(
+                "clips_viewer_view_pager",
+                "clips_viewer_pager",
+                "clips_viewer_container",
                 "clips_video_container",
-                "reel_viewer_video",
-                "clips_tabbed_pager",
+                "clips_viewer_view_pager_container",
+                "clips_tabbed_fragment_main_view_pager",
             ),
-            textOrDescContains = listOf(
-                "reel by",
-                "reels viewer",
-                "double tap to like",
+            idSuffixHints = listOf(
+                "clips_viewer",
+                "clips_video_container",
+                "clips_viewer_view_pager",
+            ),
+            // Never treat Stories as Reels.
+            excludeIdHints = listOf(
+                "story_viewer",
+                "stories_gallery",
+                "reel_viewer", // Stories legacy IDs — not Reels
+                "reels_tray",
+                "stories_tray",
+            ),
+            excludeTextHints = listOf(
+                "story by",
+                "add to story",
+                "close story",
+                "send message to share this story",
             ),
         ),
-        "com.google.android.youtube" to PackageMatcher(
-            idOrClassContains = listOf(
-                "shorts_player",
-                "shortsplayer",
+        "com.google.android.youtube" to DetectionRules(
+            exactViewIds = listOf(
+                "reel_recycler",
+                "reel_player_page_container",
+                "reel_watch_player",
+                "reel_player_underlay",
+                "reel_watch_fragment_root",
+                "shorts_player_view",
+                "shorts_video_pager",
+            ),
+            idSuffixHints = listOf(
+                "reel_recycler",
+                "reel_player_page_container",
+                "reel_watch_player",
                 "reel_watch_fragment",
-                "shorts_ui",
-                "watch_while_shorts",
+                "shorts_player",
+                "shorts_video_pager",
             ),
-            textOrDescContains = listOf(
-                "shorts player",
-                "swipe for next short",
+            // Home-feed Shorts shelves — do not block the normal YouTube feed.
+            excludeIdHints = listOf(
+                "shorts_shelf",
+                "reel_shelf",
+                "shelf_header",
             ),
-            // YouTube often exposes "Shorts" in the window/root hierarchy when open.
-            aggressiveTextOrDescContains = listOf("open shorts", "shorts ·"),
         ),
-        "com.zhiliaoapp.musically" to PackageMatcher(
-            // TikTok's main surface is endless short video.
-            alwaysMatch = true,
-        ),
-        "com.ss.android.ugc.trill" to PackageMatcher(
-            alwaysMatch = true,
-        ),
-        "com.facebook.katana" to PackageMatcher(
-            idOrClassContains = listOf(
+        "com.zhiliaoapp.musically" to DetectionRules(alwaysMatch = true),
+        "com.ss.android.ugc.trill" to DetectionRules(alwaysMatch = true),
+        "com.facebook.katana" to DetectionRules(
+            exactViewIds = listOf(
+                "reels_viewer_view_pager",
+                "reels_viewer_fragment_root",
+                "video_home_root",
+            ),
+            idSuffixHints = listOf(
                 "reels_viewer",
-                "reelsviewer",
                 "fb_shorts",
-                "short_form_video",
-                "reels_tray_viewer",
+                "short_form_video_viewer",
+                "reels_pivot",
             ),
-            textOrDescContains = listOf(
-                "reel by",
-                "reels viewer",
+            excludeIdHints = listOf(
+                "story_viewer",
+                "stories_viewer",
+                "story_media",
+                "fb_story",
+                "bucket_view",
+            ),
+            excludeTextHints = listOf(
+                "story by",
+                "add to your story",
+                "close story",
             ),
         ),
-        "com.facebook.lite" to PackageMatcher(
-            idOrClassContains = listOf("reels_viewer", "reelsviewer", "reel"),
-            textOrDescContains = listOf("reel by"),
+        "com.facebook.lite" to DetectionRules(
+            idSuffixHints = listOf(
+                "reels_viewer",
+                "short_form_video_viewer",
+            ),
+            excludeIdHints = listOf(
+                "story_viewer",
+                "stories_viewer",
+                "fb_story",
+            ),
+            excludeTextHints = listOf(
+                "story by",
+                "add to your story",
+            ),
         ),
-        "com.snapchat.android" to PackageMatcher(
-            idOrClassContains = listOf(
+        "com.snapchat.android" to DetectionRules(
+            idSuffixHints = listOf(
                 "spotlight",
                 "discover_feed_opera",
                 "spotlight_opera",
             ),
-            textOrDescContains = listOf(
-                "spotlight",
+            excludeIdHints = listOf(
+                "story",
+                "my_story",
             ),
         ),
     )
@@ -86,44 +128,128 @@ object ReelDetector {
         if (packageName.isNullOrBlank() || root == null) return false
         if (MonitoredApps.findByPackage(packageName) == null) return false
 
-        val matcher = packageMatchers[packageName] ?: return false
-        if (matcher.alwaysMatch) return true
+        val rules = packageRules[packageName] ?: return false
+        if (rules.alwaysMatch) return true
 
-        return scan(root, matcher, depth = 0, maxDepth = 14)
+        // Fast path: framework ID lookup for known player containers.
+        // A visible clips/shorts player ID is enough — don't second-guess with story text.
+        if (hasVisibleExactId(root, packageName, rules.exactViewIds)) {
+            return true
+        }
+
+        // Fallback for version drift: walk the tree for ID suffixes.
+        return scanForPlayer(root, rules, depth = 0, maxDepth = 16, nodesVisited = intArrayOf(0))
     }
 
-    private fun scan(
+    /**
+     * Collects visible view-id suffixes that look reel/short/story related.
+     * Used only for logcat diagnostics when detection misses.
+     */
+    fun debugCandidateIds(root: AccessibilityNodeInfo?, limit: Int = 20): List<String> {
+        if (root == null) return emptyList()
+        val out = LinkedHashSet<String>()
+        collectDebugIds(root, out, limit, depth = 0, maxDepth = 12)
+        return out.toList()
+    }
+
+    private fun collectDebugIds(
         node: AccessibilityNodeInfo,
-        matcher: PackageMatcher,
+        out: MutableSet<String>,
+        limit: Int,
         depth: Int,
         maxDepth: Int,
-    ): Boolean {
-        if (depth > maxDepth) return false
-
-        val className = node.className?.toString()?.lowercase().orEmpty()
+    ) {
+        if (out.size >= limit || depth > maxDepth) return
         val viewId = node.viewIdResourceName?.lowercase().orEmpty()
-        val text = node.text?.toString()?.lowercase().orEmpty()
-        val desc = node.contentDescription?.toString()?.lowercase().orEmpty()
-        val hint = node.hintText?.toString()?.lowercase().orEmpty()
-
-        val idClassHaystack = "$className $viewId"
-        val textHaystack = "$text $desc $hint"
-
-        if (matcher.idOrClassContains.any { idClassHaystack.contains(it) }) return true
-        if (matcher.textOrDescContains.any { textHaystack.contains(it) }) return true
-        if (matcher.aggressiveTextOrDescContains.any { textHaystack.contains(it) }) return true
-
+        if (viewId.isNotEmpty() && isMeaningfulVisible(node)) {
+            val suffix = viewId.substringAfter(":id/", viewId)
+            if (suffix.contains("clip") ||
+                suffix.contains("reel") ||
+                suffix.contains("short") ||
+                suffix.contains("story") ||
+                suffix.contains("spotlight")
+            ) {
+                out.add(suffix)
+            }
+        }
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
-            if (scan(child, matcher, depth + 1, maxDepth)) return true
+            collectDebugIds(child, out, limit, depth + 1, maxDepth)
+            if (out.size >= limit) return
+        }
+    }
+
+    private fun hasVisibleExactId(
+        root: AccessibilityNodeInfo,
+        packageName: String,
+        viewIds: List<String>,
+    ): Boolean {
+        for (id in viewIds) {
+            val fullId = "$packageName:id/$id"
+            val matches = root.findAccessibilityNodeInfosByViewId(fullId) ?: continue
+            val hit = matches.any { node -> isMeaningfulVisible(node) }
+            if (hit) return true
         }
         return false
     }
 
-    private data class PackageMatcher(
-        val idOrClassContains: List<String> = emptyList(),
-        val textOrDescContains: List<String> = emptyList(),
-        val aggressiveTextOrDescContains: List<String> = emptyList(),
+    private fun scanForPlayer(
+        node: AccessibilityNodeInfo,
+        rules: DetectionRules,
+        depth: Int,
+        maxDepth: Int,
+        nodesVisited: IntArray,
+    ): Boolean {
+        if (depth > maxDepth || nodesVisited[0] > 250) return false
+        nodesVisited[0]++
+
+        val viewId = node.viewIdResourceName?.lowercase().orEmpty()
+        val className = node.className?.toString()?.lowercase().orEmpty()
+        val text = node.text?.toString()?.lowercase().orEmpty()
+        val desc = node.contentDescription?.toString()?.lowercase().orEmpty()
+        val idSuffix = viewId.substringAfter(":id/", viewId)
+        val textHaystack = "$text $desc"
+
+        if (rules.excludeIdHints.any { idSuffix.contains(it) || viewId.contains(it) }) {
+            // Skip this story-related subtree but keep scanning siblings via caller.
+            return false
+        }
+        if (rules.excludeTextHints.any { textHaystack.contains(it) }) {
+            return false
+        }
+
+        val idHit = rules.idSuffixHints.any { hint ->
+            idSuffix.contains(hint) || viewId.contains(hint)
+        }
+        val classHit = rules.classNameHints.any { className.contains(it) }
+
+        if ((idHit || classHit) && isMeaningfulVisible(node)) {
+            return true
+        }
+
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            if (scanForPlayer(child, rules, depth + 1, maxDepth, nodesVisited)) {
+                return true
+            }
+        }
+        return false
+    }
+
+    private fun isMeaningfulVisible(node: AccessibilityNodeInfo): Boolean {
+        if (!node.isVisibleToUser) return false
+        val bounds = Rect()
+        node.getBoundsInScreen(bounds)
+        // Instagram can keep zero-size clips_viewer nodes in the tree when Reels aren't open.
+        return bounds.width() > 80 && bounds.height() > 80
+    }
+
+    private data class DetectionRules(
+        val exactViewIds: List<String> = emptyList(),
+        val idSuffixHints: List<String> = emptyList(),
+        val classNameHints: List<String> = emptyList(),
+        val excludeIdHints: List<String> = emptyList(),
+        val excludeTextHints: List<String> = emptyList(),
         val alwaysMatch: Boolean = false,
     )
 }
