@@ -13,6 +13,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.noscroll.app.ControlledScrollAlertActivity
 import com.noscroll.app.R
+import com.noscroll.app.scroll.ControlledScrollConfig
 
 /**
  * Shows Controlled Scroll warn/block alerts in ways that work even when
@@ -28,10 +29,13 @@ object ControlledScrollAlerter {
         val appCtx = context.applicationContext
         ensureChannel(appCtx)
 
+        val warnMin = ControlledScrollConfig.warnAfterMinutes
+        val blockMin = ControlledScrollConfig.blockAfterMinutes
+        val coolMin = ControlledScrollConfig.cooldownMinutes
         val message =
-            "You've been scrolling $appName for over 10 minutes. At 15 minutes it will lock for 40 minutes."
+            "You've been scrolling $appName for over $warnMin minutes. At $blockMin minutes it will lock for $coolMin minutes."
 
-        showToast(appCtx, "No Scroll: 10 min warning on $appName")
+        showToast(appCtx, "No Scroll: $warnMin min warning on $appName")
         postNotification(
             context = appCtx,
             notificationId = WARN_NOTIFICATION_ID,
@@ -53,10 +57,11 @@ object ControlledScrollAlerter {
         val appCtx = context.applicationContext
         ensureChannel(appCtx)
 
+        val coolMin = ControlledScrollConfig.cooldownMinutes
         val message =
-            "$appName is locked for 40 minutes because of scrolling. Open No Scroll for details."
+            "$appName is locked for $coolMin minutes because of scrolling. Open No Scroll for details."
 
-        showToast(appCtx, "No Scroll: $appName locked for 40 min")
+        showToast(appCtx, "No Scroll: $appName locked for $coolMin min")
         postNotification(
             context = appCtx,
             notificationId = BLOCK_NOTIFICATION_ID,

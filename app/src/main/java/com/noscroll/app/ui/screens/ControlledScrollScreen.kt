@@ -69,7 +69,10 @@ fun ControlledScrollScreen(
         item {
             MasterToggleCard(
                 title = "Controlled scrolling",
-                subtitle = "Warn at ${warnMin}m · lock at ${blockMin}m · cooldown ${coolMin}m",
+                subtitle = buildString {
+                    append("Warn at ${warnMin}m · lock at ${blockMin}m · cooldown ${coolMin}m")
+                    if (!ControlledScrollConfig.isProduction) append(" · DEV")
+                },
                 enabled = state.controlledScrollEnabled,
                 interactionEnabled = state.accessibilityEnabled,
                 onToggled = onProtectionToggled,

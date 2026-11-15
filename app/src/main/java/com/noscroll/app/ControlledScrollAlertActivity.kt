@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.noscroll.app.scroll.ControlledScrollConfig
 import com.noscroll.app.ui.theme.Emerald
 import com.noscroll.app.ui.theme.EmeraldDeep
 import com.noscroll.app.ui.theme.NoScrollAppTheme
@@ -120,7 +121,9 @@ private fun AlertScreen(
                 text = if (isBlock) {
                     "$appName is locked for about $minutesLeft more minutes. Take a break — come back after the cooldown."
                 } else {
-                    "You've been scrolling $appName for over 10 minutes. At 15 minutes it will lock for 40 minutes."
+                    "You've been scrolling $appName for over ${ControlledScrollConfig.warnAfterMinutes} minutes. " +
+                        "At ${ControlledScrollConfig.blockAfterMinutes} minutes it will lock for " +
+                        "${ControlledScrollConfig.cooldownMinutes} minutes."
                 },
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color.White.copy(alpha = 0.9f),
