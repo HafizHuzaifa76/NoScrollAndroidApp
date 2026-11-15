@@ -88,6 +88,8 @@ class ScrollSessionTrackerTest {
         now += 10_000L
         val warn = tracker.onScroll("instagram", "com.instagram.android", now)
         assertTrue(warn is ScrollSessionTracker.Action.Warn)
+        // Service marks this after the alert is shown.
+        store.warnShown = true
 
         store.accum = ControlledScrollConfig.BLOCK_AFTER_MS - 5_000L
         store.lastScroll = now

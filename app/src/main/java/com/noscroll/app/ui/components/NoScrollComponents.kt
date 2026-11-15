@@ -289,14 +289,27 @@ fun AppToggleCard(
     enabled: Boolean,
     onToggled: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    highlightSubtitle: Boolean = false,
+    badgeText: String? = null,
 ) {
     val colors = MaterialTheme.colorScheme
     val letterColor = if (accent.luminance() > 0.65f) Color(0xFF111827) else accent
+    val borderColor = if (highlightSubtitle) {
+        colors.tertiary.copy(alpha = 0.55f)
+    } else {
+        colors.outline.copy(alpha = 0.4f)
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = colors.surface),
+        colors = CardDefaults.cardColors(
+            containerColor = if (highlightSubtitle) {
+                colors.tertiary.copy(alpha = 0.08f)
+            } else {
+                colors.surface
+            },
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Row(
@@ -304,7 +317,7 @@ fun AppToggleCard(
                 .fillMaxWidth()
                 .border(
                     width = 1.dp,
-                    color = colors.outline.copy(alpha = 0.4f),
+                    color = borderColor,
                     shape = RoundedCornerShape(18.dp),
                 )
                 .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -326,18 +339,36 @@ fun AppToggleCard(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    color = colors.onSurface,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleSmall,
+                        color = colors.onSurface,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    if (!badgeText.isNullOrBlank()) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = badgeText,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = colors.tertiary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(colors.tertiary.copy(alpha = 0.16f))
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = colors.onSurfaceVariant,
+                    color = if (highlightSubtitle) colors.tertiary else colors.onSurfaceVariant,
+                    fontWeight = if (highlightSubtitle) FontWeight.Medium else FontWeight.Normal,
                 )
             }
+            Spacer(modifier = Modifier.width(8.dp))
             Switch(
                 checked = checked,
                 onCheckedChange = onToggled,
@@ -347,6 +378,8 @@ fun AppToggleCard(
                     checkedThumbColor = colors.onPrimary,
                     uncheckedTrackColor = colors.surfaceVariant,
                     uncheckedThumbColor = colors.onSurfaceVariant,
+                    disabledCheckedTrackColor = colors.primary.copy(alpha = 0.45f),
+                    disabledCheckedThumbColor = colors.onPrimary.copy(alpha = 0.9f),
                 ),
             )
         }

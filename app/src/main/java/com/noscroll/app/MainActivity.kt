@@ -1,12 +1,17 @@
 package com.noscroll.app
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 import com.noscroll.app.data.PreferencesManager
 import com.noscroll.app.model.MonitoredApps
 import com.noscroll.app.model.SocialApps
@@ -22,6 +27,9 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var preferences: PreferencesManager
     private var uiState by mutableStateOf(AppUiState())
+
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -44,6 +52,7 @@ class MainActivity : ComponentActivity() {
                     },
                     onControlledScrollToggled = { enabled ->
                         preferences.isControlledScrollEnabled = enabled
+                        if (enabled) requestNotificationPermissionIfNeeded()
                         refreshUiState()
                     },
                     onReelAppToggled = { appId, enabled ->
@@ -55,6 +64,11 @@ class MainActivity : ComponentActivity() {
                         refreshUiState()
                     },
                     onControlledAppToggled = { appId, enabled ->
+                        // Ignore attempts to disable while the app is in cooldown.
+                        if (!enabled && preferences.isControlledAppLocked(appId)) {
+                            refreshUiState()
+                            return@NoScrollApp
+                        }
                         preferences.setControlledAppEnabled(appId, enabled)
                         refreshUiState()
                     },
@@ -67,6 +81,17 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         refreshUiState()
+    }
+
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        val granted = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.POST_NOTIFICATIONS,
+        ) == PackageManager.PERMISSION_GRANTED
+        if (!granted) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     private fun refreshUiState() {

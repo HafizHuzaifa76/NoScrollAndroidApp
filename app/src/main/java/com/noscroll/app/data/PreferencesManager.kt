@@ -54,7 +54,22 @@ class PreferencesManager(context: Context) : ScrollSessionStore {
         prefs.getBoolean(KEY_CONTROLLED_APP_PREFIX + appId, true)
 
     fun setControlledAppEnabled(appId: String, enabled: Boolean) {
+        // Prevent bypass: can't turn an app off while its cooldown is active.
+        if (!enabled && getBlockedUntil(appId) > System.currentTimeMillis()) {
+            return
+        }
         prefs.edit { putBoolean(KEY_CONTROLLED_APP_PREFIX + appId, enabled) }
+    }
+
+    fun isControlledAppLocked(appId: String, now: Long = System.currentTimeMillis()): Boolean =
+        getBlockedUntil(appId) > now
+
+    /** Packages currently in cooldown — enforced even if toggles were changed. */
+    fun controlledCooldownPackageNames(now: Long = System.currentTimeMillis()): Set<String> {
+        return SocialApps.all
+            .filter { getBlockedUntil(it.id) > now }
+            .flatMap { it.packageNames }
+            .toSet()
     }
 
     fun incrementBlockCount() {

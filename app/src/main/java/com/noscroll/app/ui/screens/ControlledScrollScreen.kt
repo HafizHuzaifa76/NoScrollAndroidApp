@@ -22,10 +22,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.noscroll.app.scroll.ControlledScrollConfig
 import com.noscroll.app.ui.AppUiState
+import com.noscroll.app.ui.ControlledAppToggleState
 import com.noscroll.app.ui.components.AppToggleCard
 import com.noscroll.app.ui.components.HeroStatusCard
 import com.noscroll.app.ui.components.MasterToggleCard
 import com.noscroll.app.ui.components.SectionHeader
+import java.text.DateFormat
+import java.util.Date
 import java.util.concurrent.TimeUnit
 
 @Composable
@@ -40,6 +43,7 @@ fun ControlledScrollScreen(
     val warnMin = TimeUnit.MILLISECONDS.toMinutes(ControlledScrollConfig.WARN_AFTER_MS)
     val blockMin = TimeUnit.MILLISECONDS.toMinutes(ControlledScrollConfig.BLOCK_AFTER_MS)
     val coolMin = TimeUnit.MILLISECONDS.toMinutes(ControlledScrollConfig.COOLDOWN_MS)
+    val now = System.currentTimeMillis()
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -83,36 +87,75 @@ fun ControlledScrollScreen(
         item {
             SectionHeader(
                 title = "Apps to limit",
-                subtitle = "Hard Social Block apps are skipped automatically",
+                subtitle = "Locked apps stay on until their cooldown ends",
             )
         }
 
         items(state.controlledApps, key = { it.app.id }) { item ->
-            val remaining = (item.blockedUntilMs - System.currentTimeMillis()).coerceAtLeast(0L)
-            val usedMin = TimeUnit.MILLISECONDS.toMinutes(item.accumulatedMs)
-            val statusLine = when {
-                remaining > 0L ->
-                    "Locked · ${TimeUnit.MILLISECONDS.toMinutes(remaining).coerceAtLeast(1)}m left"
-                item.accumulatedMs > 0L ->
-                    "Session · ${usedMin}m scrolled"
-                else -> item.app.description.replace(
-                    "Close ${item.app.displayName} as soon as it opens",
-                    "Limit scrolling in ${item.app.displayName}",
-                )
-            }
+            val locked = item.blockedUntilMs > now
+            val status = controlledStatusMessage(
+                item = item,
+                now = now,
+                warnMin = warnMin,
+                blockMin = blockMin,
+                coolMin = coolMin,
+            )
 
             AppToggleCard(
                 title = item.app.displayName,
-                subtitle = statusLine,
+                subtitle = status.message,
                 accent = Color(item.app.accentHex),
-                checked = item.enabled,
-                enabled = state.accessibilityEnabled && state.controlledScrollEnabled,
-                onToggled = { onAppToggled(item.app.id, it) },
+                checked = if (locked) true else item.enabled,
+                // While locked, switch cannot be turned off.
+                enabled = state.accessibilityEnabled &&
+                    state.controlledScrollEnabled &&
+                    !locked,
+                onToggled = { enabled ->
+                    if (locked && !enabled) return@AppToggleCard
+                    onAppToggled(item.app.id, enabled)
+                },
+                highlightSubtitle = locked,
+                badgeText = if (locked) "Locked" else null,
             )
         }
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
     }
+}
+
+private data class ControlledStatus(
+    val message: String,
+)
+
+private fun controlledStatusMessage(
+    item: ControlledAppToggleState,
+    now: Long,
+    warnMin: Long,
+    blockMin: Long,
+    coolMin: Long,
+): ControlledStatus {
+    val remaining = (item.blockedUntilMs - now).coerceAtLeast(0L)
+    if (remaining > 0L) {
+        val availableAt = DateFormat.getTimeInstance(DateFormat.SHORT)
+            .format(Date(item.blockedUntilMs))
+        val remainingMin = TimeUnit.MILLISECONDS.toMinutes(remaining).coerceAtLeast(1)
+        return ControlledStatus(
+            message = "You scrolled for $blockMin min, so this app is blocked for $coolMin min. " +
+                "Available again at $availableAt (about ${remainingMin}m left).",
+        )
+    }
+
+    val usedMin = TimeUnit.MILLISECONDS.toMinutes(item.accumulatedMs)
+    if (item.accumulatedMs > 0L) {
+        val usedLabel = if (usedMin < 1L) "less than 1" else usedMin.toString()
+        return ControlledStatus(
+            message = "Session so far: $usedLabel min scrolled. Warning at $warnMin min, lock at $blockMin min.",
+        )
+    }
+
+    return ControlledStatus(
+        message = "Limit scrolling in ${item.app.displayName}",
+    )
 }
 
 @Composable
@@ -140,7 +183,8 @@ private fun RulesCard(
                 text = "• Counts active scrolling (not idle watching/chatting)\n" +
                     "• Pauses after 1 minute without scrolling\n" +
                     "• Resets the budget after 30 minutes away\n" +
-                    "• Warns at ${warnMin}m, locks at ${blockMin}m for ${coolMin}m",
+                    "• Warns at ${warnMin}m, locks at ${blockMin}m for ${coolMin}m\n" +
+                    "• While locked, that app toggle stays on and can’t be turned off",
                 style = MaterialTheme.typography.bodySmall,
                 color = colors.onSurfaceVariant,
             )

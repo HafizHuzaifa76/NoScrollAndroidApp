@@ -68,8 +68,9 @@ class ScrollSessionTracker(
             return Action.Block(accumulated, appId, packageName, blockedUntil)
         }
 
+        // Do not mark warningShown here — the service marks it after the alert is actually shown.
+        // Otherwise a failed Activity launch would permanently skip the warning.
         if (accumulated >= ControlledScrollConfig.WARN_AFTER_MS && !store.isWarningShown(appId)) {
-            store.setWarningShown(appId, true)
             return Action.Warn(accumulated, appId, packageName)
         }
 

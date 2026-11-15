@@ -1,13 +1,13 @@
 package com.noscroll.app
 
 import android.accessibilityservice.AccessibilityService
-import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import com.noscroll.app.data.PreferencesManager
 import com.noscroll.app.detection.ReelDetector
 import com.noscroll.app.model.SocialApps
 import com.noscroll.app.scroll.ScrollSessionTracker
+import com.noscroll.app.util.ControlledScrollAlerter
 
 /**
  * Runs in the background once Accessibility permission is granted.
@@ -61,18 +61,27 @@ class NoScrollAccessibilityService : AccessibilityService() {
             return
         }
 
-        val controlledPackages = preferences.enabledControlledPackageNames()
         val controlledApp = SocialApps.findByPackage(packageName)
+        val cooldownPackages = preferences.controlledCooldownPackageNames(now)
+        val controlledPackages = preferences.enabledControlledPackageNames()
         val inControlled = packageName in controlledPackages && controlledApp != null
 
-        // 2) Controlled-scroll cooldown enforcement.
-        if (inControlled) {
-            val cooldownAction = scrollTracker.checkCooldown(controlledApp!!.id, packageName, now)
+        // 2) Controlled-scroll cooldown — still enforced even if the user tries to toggle the app off.
+        if (controlledApp != null && packageName in cooldownPackages) {
+            val cooldownAction = scrollTracker.checkCooldown(controlledApp.id, packageName, now)
             if (cooldownAction is ScrollSessionTracker.Action.EnforceCooldown) {
-                enforceControlledCooldown(packageName, controlledApp.displayName, cooldownAction.blockedUntilMs, now)
+                enforceControlledCooldown(
+                    packageName,
+                    controlledApp.displayName,
+                    cooldownAction.blockedUntilMs,
+                    now,
+                )
                 return
             }
-            scrollTracker.onAppSeen(controlledApp.id, now)
+        }
+
+        if (inControlled) {
+            scrollTracker.onAppSeen(controlledApp!!.id, now)
         }
 
         // 3) Reels / Shorts blocker — preserved behavior.
@@ -107,25 +116,24 @@ class NoScrollAccessibilityService : AccessibilityService() {
     ) {
         when (val action = scrollTracker.onScroll(app.id, packageName, now)) {
             is ScrollSessionTracker.Action.Warn -> {
+                // Mark shown only when we actually deliver the warning (toast/notification/activity).
                 if (now - lastWarnAtMs < WARN_LAUNCH_COOLDOWN_MS) return
                 lastWarnAtMs = now
+                preferences.setWarningShown(app.id, true)
                 Log.i(TAG, "Controlled scroll warning for ${app.id} after ${action.accumulatedMs}ms")
-                openAlert(
-                    mode = ControlledScrollAlertActivity.MODE_WARN,
-                    appName = app.displayName,
-                    blockedUntil = 0L,
-                )
+                ControlledScrollAlerter.showWarning(this, app.displayName)
             }
 
             is ScrollSessionTracker.Action.Block -> {
                 lastBlockAtMs = now
                 lastBlockedPackage = packageName
+                lastWarnAtMs = now
                 Log.i(TAG, "Controlled scroll block for ${app.id} until ${action.blockedUntilMs}")
                 performGlobalAction(GLOBAL_ACTION_HOME)
-                openAlert(
-                    mode = ControlledScrollAlertActivity.MODE_BLOCK,
-                    appName = app.displayName,
-                    blockedUntil = action.blockedUntilMs,
+                ControlledScrollAlerter.showBlock(
+                    this,
+                    app.displayName,
+                    action.blockedUntilMs,
                 )
             }
 
@@ -150,22 +158,8 @@ class NoScrollAccessibilityService : AccessibilityService() {
         // Avoid spamming the block screen on every event.
         if (now - lastWarnAtMs > WARN_LAUNCH_COOLDOWN_MS) {
             lastWarnAtMs = now
-            openAlert(
-                mode = ControlledScrollAlertActivity.MODE_BLOCK,
-                appName = appName,
-                blockedUntil = blockedUntilMs,
-            )
+            ControlledScrollAlerter.showBlock(this, appName, blockedUntilMs)
         }
-    }
-
-    private fun openAlert(mode: String, appName: String, blockedUntil: Long) {
-        val intent = Intent(this, ControlledScrollAlertActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            putExtra(ControlledScrollAlertActivity.EXTRA_MODE, mode)
-            putExtra(ControlledScrollAlertActivity.EXTRA_APP_NAME, appName)
-            putExtra(ControlledScrollAlertActivity.EXTRA_BLOCKED_UNTIL, blockedUntil)
-        }
-        startActivity(intent)
     }
 
     private fun closeSocialApp(packageName: String, now: Long) {
